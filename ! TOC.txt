@@ -1,0 +1,7 @@
+1) File Enconding in AutoHotkey (FileRead.ahk)
+2) File Encoding in DOS (Type Box.bat)
+3) File Encoding Lab (File Encoding Lab.ahk)
+4) ASCII and ANSI
+5) Unicode 8-16-32 bits
+6) Unicode with/without BOM
+7) Unicode Little or Big Endian
