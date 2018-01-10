@@ -28,6 +28,13 @@ Version history
 - renamed and improved cheat sheet
 - better font type for graphical chars from CP437 in f_Edit control
 
+2018-01-09 v2.0
+- in list view, checkbox checked when char is part of the BOM (header)
+- when selecting file, filter txt and csv files
+- remember last open folder
+- center list view content
+- cheat sheet touch-up
+
 */
 ;============================================================
 
@@ -40,9 +47,9 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
 strFileEncodingLabTitle := "File Encoding Lab"
 
-Gui, Add, ListView, r20 w150 vf_lvDataFile, Pos|Dec|Hexa|Value
+Gui, Add, ListView, r20 w160 vf_lvDataFile Checked, H./Pos|Dec|Hexa|Value
 Gui, Font, s12, Courier New
-Gui, Add, Edit, yp x+20 h369 w700 vf_Edit ReadOnly 
+Gui, Add, Edit, yp x+10 h369 w700 vf_Edit ReadOnly 
 gui, Font
 Gui, Add, Button, x10 gLoadFile, Load another file
 Gui, Font, w700
@@ -72,15 +79,17 @@ LoadFile:
 
 if !StrLen(strTextFileName)
 	; first time open this file
-	strTextFileName := A_ScriptDir . "\ASCII.txt"
+	strTextFileName := A_ScriptDir . "\Tutorial\ASCII.txt"
 else
-	FileSelectFile, strTextFileName, 3, %A_ScriptDir%, , Text Files (*.txt)
+	FileSelectFile, strTextFileName, 3, %strLastDir%, , Text Files (*.txt; *.csv)
+
+SplitPath, strTextFileName, , strLastDir
 
 if !StrLen(strTextFileName)
 	return
 
 LV_Delete()
-gosub, Display
+gosub, DisplayBinary
 gosub, LoadFileEncoded
 
 return
@@ -88,22 +97,26 @@ return
 
 
 ;------------------------------------------------------------
-Display:
+DisplayBinary:
 ;------------------------------------------------------------
 
 f := FileOpen(strTextFileName, "r")
+strNormalReadPos := f.Pos ; file pointer at the beginning of the content (after the BOM if file has one)
 
 GuiControl, , f_Filename, %strTextFileName%
 GuiControl, , f_Detected, % f.Encoding
 GuiControl, % (InStr(f.Encoding, "UTF") ? "Disable" : "Enable"), f_strFileEncoding
 f.Seek(0, 0) ; to include BOM when file has one
+
 Loop, 20
 {
 	int := f.RawRead(strRead, 1)
 	if !(int)
 		break
-	LV_Add(, Format("{:02d}", A_Index), Format("{:03d}", Asc(strRead)), Format("{:02X}", Asc(strRead)), strRead)
+	LV_Add((f.Pos <= strNormalReadPos ? "Check" : ""), Format("{:02d}", A_Index), Format("{:03d}", Asc(strRead)), Format("{:02X}", Asc(strRead)), strRead)
 }
+Loop, 4
+	LV_ModifyCol(A_Index, "Center")
 GuiControl, 1:ChooseString, f_strFileEncoding, % (StrLen(f.Encoding) ? f.Encoding : "ANSI")
 GuiControl, 1:Focus, f_strFileEncoding
 
@@ -174,10 +187,10 @@ strCheatSheet =
 Encoding|AHK Encoding|Notepad label|Header|Char length|Notes
 ASCII|Empty or omitted|ANSI|(none)|1 byte (8 bits) per char`tFixed length|US-ASCII -  7-bit - no chars over Chr(127)`t(see: <a href="http://www.asciitable.com/">http://www.asciitable.com/</a>)
 ANSI|Empty or omitted|ANSI|(none)|1 byte (8 bits) per char`tFixed length|Also called "Extended ASCII" - 8-bit - with additional chars from Chr(128) to Chr(255), chars displayed depending on system locale.`tSee DOS command CHCP.`tThere are more than 220 MS-DOS and Windows code pages (or locales). Some examples:`t• CP1252: Windows Latin 1 - ANSI`t• CP437: MS DOS Latin US (same as Extended ASCII)`t• CP863: MS DOS French Canada`t• CP10000: Macintosh Roman`t(see: <a href="https://msdn.microsoft.com/en-us/library/cc195051.aspx">https://msdn.microsoft.com/en-us/library/cc195051.aspx</a>)
-Unicode UTF-8|UTF-8|UTF-8|EF BB BF`tï»¿|1 to 4 bytes per char, depending on the Unicode code point of the char|see: <a href="https://en.wikipedia.org/wiki/UTF-8">https://en.wikipedia.org/wiki/UTF-8</a>
+Unicode UTF-8|UTF-8|UTF-8|EF BB BF`tdisplay: ï»¿|1 to 4 bytes per char, depending on the Unicode code point of the char|see: <a href="https://en.wikipedia.org/wiki/UTF-8">https://en.wikipedia.org/wiki/UTF-8</a>
 Unicode UTF-8 No BOM|UTF-8-RAW|n/a|(none)|Same as above|No byte order mark (BOM)`tMany UTF-8 files have no BOM, especially if they originated on non-Windows systems.
-Unicode UTF-16 Little Endian|UTF-16|Unicode|FF FE`tÿþ|1 or 2 x 2 bytes (16-bit), depending on the Unicode code point of the char|Least significant byte stored first (lowest address)`tWindows use Little Endian by default
-Unicode UTF-16 Big Endian|n/a|Unicode big endian|FE FF`tþÿ|1 or 2 x 2 bytes (16-bit), depending on the Unicode code point of the char|Most significant byte stored first (lowest address)`t(see: <a href="https://en.wikipedia.org/wiki/Endianness">https://en.wikipedia.org/wiki/Endianness</a>)
+Unicode UTF-16 Little Endian|UTF-16|Unicode|FF FE`tdisplay: ÿþ|1 or 2 x 2 bytes (16-bit), depending on the Unicode code point of the char|Least significant byte stored first (lowest address)`tWindows use Little Endian by default
+Unicode UTF-16 Big Endian|n/a|Unicode big endian|FE FF`tdisplay: þÿ|1 or 2 x 2 bytes (16-bit), depending on the Unicode code point of the char|Most significant byte stored first (lowest address)`t(see: <a href="https://en.wikipedia.org/wiki/Endianness">https://en.wikipedia.org/wiki/Endianness</a>)
 Unicode UTF-16 No BOM|UTF-16-RAW|n/a|(none)|Same as above|No byte order mark (BOM)
 UTF-32|n/a|n/a|00 00 FE FF (for Big Endian)`tFF FE 00 00 (for Little Endian).|4 bytes (32-bit) per Unicode code point`tFixed length|More efficient because of fixed-length, if space is not an issue
 )
@@ -220,7 +233,7 @@ Gui, Add, Text, % "x10 y+20 w" . intTotalWidth . " 0x10"
 Gui, Font, w700
 Gui, Add, Link, x10 y+1, Glossary (<a href="http://unicode.org/glossary/">http://unicode.org/glossary/</a>)
 Gui, Font, s10 w500
-Gui, Add, Text, x10 y+5, ASCII (American Standard Code for Information Interchange): a 7-bit coded character set for information interchange, set of 128 Unicode characters from 0 to 127, including control codes and graphic characters.`nANSI (American National Standards Institute): collective name for all Windows code pages. Sometimes used specifically for code page 1252.`nBOM (Byte Order Mark): used to indicate the byte order of a text, highest valued byte for a character first (little endian) or last (big endian) in the bytes sequence.`nCP (Code Page): A coded character set, often referring to set used by a PC, for example, PC code page 437 is the default coded character set used by the U.S. English version of the DOS operating system.`nCode Point: any value in the Unicode range of numerical values available for encoding characters (for the Unicode Standard, a range of integers from 0 to 10FFFF
+Gui, Add, Text, x10 y+5, ASCII (American Standard Code for Information Interchange): a 7-bit coded character set for information interchange, set of 128 Unicode characters from 0 to 127, including control codes and graphic characters.`nANSI (American National Standards Institute): collective name for all Windows code pages. Sometimes used specifically for code page 1252.`nBOM (Byte Order Mark): used to indicate the byte order of a text, highest valued byte for a character first (little endian) or last (big endian) in the bytes sequence.`nCP (Code Page): A coded character set, often referring to set used by a PC, for example, PC code page 437 is the default coded character set used by the U.S. English version of the DOS operating system.`nCode Point: any value in the Unicode range of numerical values available for encoding characters (for the Unicode Standard, a range of integers from 0 to 10FFFF`nUTF (Universal Transformation Format): name is derived from Unicode (or Universal Coded Character Set)
 
 Gui, Show, X%intX% Y%intY% , %strFileEncodingCheatSheetTitle%
 
