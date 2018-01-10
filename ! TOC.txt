@@ -1,7 +1,24 @@
 1) File Enconding in AutoHotkey (FileRead.ahk)
+- FileRead "QAP-ES-UTF-16-No_BOM.txt"
+- try 5 file encondings available in AHK
+
 2) File Encoding in DOS (Type Box.bat)
+- run the batch file "Type Box.bat" in DOS console
+- see the ASCII/ANSI file with different code pages
+
 3) File Encoding Lab (File Encoding Lab.ahk)
-4) ASCII and ANSI
-5) Unicode 8-16-32 bits
-6) Unicode with/without BOM
-7) Unicode Little or Big Endian
+- "ASCII.txt" (detected CP1252, 7-bit chars), File Encoding Lab tour
+- "ANSI.txt" (detected CP1252, 8-bit chars)
+- "Box-CP437.txt" (detected CP1252, 8-bit chars), change to CP437
+- "UTF-8.txt" (detected UTF-8) see BOM (header) on left side
+
+4) Cheat Sheet
+- ASCII and ANSI
+- Unicode 8-16-32 bits
+- Unicode with/without BOM
+- Unicode Little or Big Endian
+
+5) Real life files
+- LinkedIn Connections Export UTF-8 No BOM (open Connection.csv in XL, convert to ANSI and UTF-16 with CSV Buddy)
+- QAP Spanish translation
+- QAP Chinese translation
